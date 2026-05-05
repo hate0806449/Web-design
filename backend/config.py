@@ -13,3 +13,7 @@ DATABASE_URL = os.getenv(
 INSTAGRAM_APP_ID = os.getenv("INSTAGRAM_APP_ID", "")
 INSTAGRAM_APP_SECRET = os.getenv("INSTAGRAM_APP_SECRET", "")
 BASE_URL = os.getenv("NEXT_PUBLIC_BASE_URL", "http://localhost:3000")
+
+# 非官方 scraping 用 — 從瀏覽器 cookie 拿
+IG_SESSION_ID = os.getenv("IG_SESSION_ID", "")
+IG_CSRF_TOKEN = os.getenv("IG_CSRF_TOKEN", "")
