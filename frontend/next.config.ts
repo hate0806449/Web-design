@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // TODO: 加 rewrites 把 /api/* 代理到 FastAPI（之後再做）
+  // 前端 /api/* 代理到 FastAPI 後端，這樣前端 fetch 都打同源就好
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:8000/api/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
