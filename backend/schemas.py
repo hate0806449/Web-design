@@ -32,6 +32,10 @@ class VideoOut(BaseModel):
         from_attributes = True
 
 
+class VideoWithSnapshots(VideoOut):
+    snapshots: list[SnapshotOut] = []
+
+
 class IgUser(BaseModel):
     id: str
     username: str

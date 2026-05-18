@@ -1,18 +1,13 @@
-"""Videos API — 改成走真實 DB + IG service。
-
-支援：
-- GET    /api/videos           列所有追蹤影片（含最新一筆 Snapshot）
-- POST   /api/videos           新增追蹤（會立刻打 IG 抓一筆 Snapshot）
-
-DELETE / refresh / 歷史 snapshot 留給穎禾下階段做。
-"""
+"""Videos API — CRUD 完整版 + Snapshot 歷史 + CSV 匯出。"""
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -56,14 +51,13 @@ def _serialize_video(v: Video) -> dict:
 
 
 def _pick_fetcher(request: Request):
-    """有 OAuth token 用官方 API，沒有就用 session cookie。"""
     access_token = request.cookies.get("ig_access_token")
     if access_token:
         return lambda sc: fetch_media_info_with_token(sc, access_token)
     return fetch_media_info
 
 
-# ── GET ──────────────────────────────────────────────────────────────────────
+# ── GET /api/videos ──────────────────────────────────────────────────────────
 
 
 @router.get("")
@@ -72,7 +66,7 @@ def list_videos(db: Session = Depends(get_db)):
     return JSONResponse([_serialize_video(v) for v in videos])
 
 
-# ── POST ─────────────────────────────────────────────────────────────────────
+# ── POST /api/videos ─────────────────────────────────────────────────────────
 
 
 class AddVideoBody(BaseModel):
@@ -121,3 +115,109 @@ def add_video(
     db.commit()
     db.refresh(video)
     return JSONResponse(_serialize_video(video))
+
+
+# ── GET /api/videos/export.csv ───────────────────────────────────────────────
+# 注意：放在 /{video_id} 前面，否則會被路徑吃掉
+
+
+@router.get("/export.csv")
+def export_csv(db: Session = Depends(get_db)):
+    """匯出所有 Video 的最新 Snapshot 成 CSV。"""
+    videos = db.query(Video).order_by(Video.createdAt.desc()).all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "shortcode", "username", "caption",
+        "views", "igViews", "fbViews",
+        "likes", "comments", "shares",
+        "uploadedAt", "scrapedAt",
+    ])
+
+    for v in videos:
+        s = v.snapshots[0] if v.snapshots else None
+        writer.writerow([
+            v.shortcode,
+            v.username or "",
+            (v.caption or "").replace("\n", " ")[:200],
+            s.views if s else "",
+            s.igViews if s else "",
+            s.fbViews if s else "",
+            s.likes if s else "",
+            s.comments if s else "",
+            s.shares if s else "",
+            v.uploadedAt.isoformat() if v.uploadedAt else "",
+            s.scrapedAt.isoformat() if s and s.scrapedAt else "",
+        ])
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="videos.csv"'},
+    )
+
+
+# ── GET /api/videos/{id} ─────────────────────────────────────────────────────
+
+
+@router.get("/{video_id}")
+def get_video(video_id: str, db: Session = Depends(get_db)):
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        return JSONResponse({"error": "找不到影片"}, status_code=404)
+
+    result = _serialize_video(video)
+    # 歷史 snapshot 升序，給趨勢圖用
+    result["snapshots"] = [
+        _serialize_snapshot(s) for s in reversed(video.snapshots)
+    ]
+    return JSONResponse(result)
+
+
+# ── DELETE /api/videos/{id} ──────────────────────────────────────────────────
+
+
+@router.delete("/{video_id}")
+def delete_video(video_id: str, db: Session = Depends(get_db)):
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        return JSONResponse({"error": "找不到影片"}, status_code=404)
+    db.delete(video)
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+# ── POST /api/videos/{id}/refresh ────────────────────────────────────────────
+
+
+@router.post("/{video_id}/refresh")
+def refresh_video(
+    video_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        return JSONResponse({"error": "找不到影片"}, status_code=404)
+
+    fetcher = _pick_fetcher(request)
+    try:
+        info = fetcher(video.shortcode)
+    except Exception as e:
+        return JSONResponse({"error": f"IG API 失敗: {e}"}, status_code=502)
+
+    snapshot = Snapshot(
+        videoId=video.id,
+        views=info.views,
+        igViews=info.igViews,
+        fbViews=info.fbViews,
+        likes=info.likes,
+        comments=info.comments,
+        shares=info.shares,
+    )
+    db.add(snapshot)
+    db.commit()
+    db.refresh(snapshot)
+    return JSONResponse(_serialize_snapshot(snapshot))
