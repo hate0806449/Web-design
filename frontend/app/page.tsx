@@ -2,15 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { AddVideoForm } from "@/components/AddVideoForm";
+import { VideoCard } from "@/components/VideoCard";
 import { StatsGrid } from "@/components/StatsGrid";
 import { VideoWithLatestSnapshot, IgUser } from "@/types";
-
-function fmt(n: number | null): string {
-  if (n == null) return "-";
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
-  return String(n);
-}
 
 export default function Home() {
   const [videos, setVideos] = useState<VideoWithLatestSnapshot[]>([]);
@@ -21,7 +15,6 @@ export default function Home() {
     fetch("/api/videos")
       .then((r) => r.json())
       .then((data) => setVideos(data))
-      .catch((e) => console.error("load videos fail", e))
       .finally(() => setLoading(false));
 
     fetch("/api/auth/me")
@@ -29,8 +22,18 @@ export default function Home() {
       .then((data) => setUser(data ?? null));
   }, []);
 
-  function handleAdded(v: VideoWithLatestSnapshot) {
-    setVideos((prev) => [v, ...prev]);
+  function handleAdded(video: VideoWithLatestSnapshot) {
+    setVideos((prev) => [video, ...prev]);
+  }
+
+  function handleDeleted(id: string) {
+    setVideos((prev) => prev.filter((v) => v.id !== id));
+  }
+
+  function handleRefreshed(updated: VideoWithLatestSnapshot) {
+    setVideos((prev) =>
+      prev.map((v) => (v.id === updated.id ? updated : v))
+    );
   }
 
   async function handleLogout() {
@@ -39,58 +42,64 @@ export default function Home() {
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1>IG Reel Tracker</h1>
-        <div>
-          {user === undefined ? null : user ? (
-            <>
-              <span style={{ marginRight: 8 }}>@{user.username}</span>
-              <button onClick={handleLogout}>登出</button>
-            </>
-          ) : (
-            <a href="/api/auth/instagram">Instagram 登入</a>
-          )}
+    <div className="min-h-screen bg-zinc-50">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              IG Reel Tracker
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              追蹤 Instagram Reel 數據變化
+            </p>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            {user === undefined ? null : user ? (
+              <>
+                <span className="text-sm text-zinc-600">@{user.username}</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm px-3 py-1.5 rounded-md border border-zinc-300 hover:bg-zinc-100 transition-colors"
+                >
+                  登出
+                </button>
+              </>
+            ) : (
+              <a
+                href="/api/auth/instagram"
+                className="text-sm px-4 py-1.5 rounded-md bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity font-medium"
+              >
+                Instagram 登入
+              </a>
+            )}
+          </div>
         </div>
+
+        <div className="relative">
+          <AddVideoForm onAdded={handleAdded} />
+        </div>
+
+        {videos.length > 0 && <StatsGrid videos={videos} />}
+
+        {loading ? (
+          <p className="text-center text-muted-foreground py-12">載入中...</p>
+        ) : videos.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">
+            還沒有任何影片，貼上 IG Reel 連結開始追蹤
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {videos.map((v) => (
+              <VideoCard
+                key={v.id}
+                video={v}
+                onDeleted={handleDeleted}
+                onRefreshed={handleRefreshed}
+              />
+            ))}
+          </div>
+        )}
       </div>
-      <p>追蹤 Instagram Reel 數據變化</p>
-
-      <hr />
-
-      <AddVideoForm onAdded={handleAdded} />
-
-      {videos.length > 0 && <StatsGrid videos={videos} />}
-
-      <hr />
-
-      <h2>追蹤清單</h2>
-      {loading ? (
-        <p>載入中...</p>
-      ) : videos.length === 0 ? (
-        <p>還沒有任何影片，貼上 IG Reel 連結開始追蹤</p>
-      ) : (
-        <ul>
-          {videos.map((v) => {
-            const s = v.latestSnapshot;
-            return (
-              <li key={v.id}>
-                <b>@{v.username ?? "unknown"}</b> ({v.shortcode}) — 觀看 {fmt(s?.views ?? null)}
-                {s?.igViews != null && s.igViews !== s.views && (
-                  <span style={{ color: "#888", fontSize: 11 }}>
-                    {" "}(IG {fmt(s.igViews)} / FB {fmt(s.fbViews)})
-                  </span>
-                )}
-                {" "}/ 讚 {fmt(s?.likes ?? null)} / 留言 {fmt(s?.comments ?? null)}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <hr />
-      <p style={{ color: "gray", fontSize: 12 }}>
-        v0.2 / 接 DB + IG 真實數據 / UI 還醜，下週給穎禾美化
-      </p>
     </div>
   );
 }

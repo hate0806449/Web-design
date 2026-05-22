@@ -21,6 +21,10 @@ export interface VideoWithLatestSnapshot {
   latestSnapshot: SnapshotData | null;
 }
 
+export interface VideoWithSnapshots extends VideoWithLatestSnapshot {
+  snapshots: SnapshotData[];
+}
+
 export interface IgUser {
   id: string;
   username: string;

@@ -13,40 +13,32 @@ interface Props {
 }
 
 export function StatsGrid({ videos }: Props) {
-  const snaps = videos.map((v) => v.latestSnapshot).filter(Boolean);
+  const snapshots = videos.map((v) => v.latestSnapshot).filter(Boolean);
 
-  const totalViews = snaps.reduce((s, sn) => s + (sn!.views ?? 0), 0);
-  const totalLikes = snaps.reduce((s, sn) => s + (sn!.likes ?? 0), 0);
-  const totalComments = snaps.reduce((s, sn) => s + (sn!.comments ?? 0), 0);
+  const totalViews = snapshots.reduce((s, snap) => s + (snap!.views ?? 0), 0);
+  const totalLikes = snapshots.reduce((s, snap) => s + (snap!.likes ?? 0), 0);
+  const totalComments = snapshots.reduce(
+    (s, snap) => s + (snap!.comments ?? 0),
+    0
+  );
 
-  const items = [
-    { label: "總觀看數", value: fmt(totalViews) },
-    { label: "總按讚", value: fmt(totalLikes) },
-    { label: "總留言", value: fmt(totalComments) },
-    { label: "追蹤影片", value: String(videos.length) },
+  const stats = [
+    { label: "總觀看數", value: fmt(totalViews), icon: "👁" },
+    { label: "總按讚", value: fmt(totalLikes), icon: "❤️" },
+    { label: "總留言", value: fmt(totalComments), icon: "💬" },
+    { label: "追蹤影片", value: String(videos.length), icon: "🎬" },
   ];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 8,
-        margin: "12px 0",
-      }}
-    >
-      {items.map((it) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {stats.map((s) => (
         <div
-          key={it.label}
-          style={{
-            border: "1px solid #ccc",
-            padding: 12,
-            borderRadius: 4,
-            background: "#fafafa",
-          }}
+          key={s.label}
+          className="bg-white rounded-xl border p-4 flex flex-col gap-1"
         >
-          <div style={{ fontSize: 11, color: "#666" }}>{it.label}</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{it.value}</div>
+          <span className="text-2xl">{s.icon}</span>
+          <span className="text-2xl font-bold tracking-tight">{s.value}</span>
+          <span className="text-sm text-muted-foreground">{s.label}</span>
         </div>
       ))}
     </div>

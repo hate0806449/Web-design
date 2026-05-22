@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { VideoWithLatestSnapshot } from "@/types";
 
 interface Props {
@@ -36,19 +38,20 @@ export function AddVideoForm({ onAdded }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ marginBottom: 12 }}>
-      <input
-        type="text"
+    <form onSubmit={handleSubmit} className="relative flex gap-2">
+      <Input
         placeholder="貼上 Instagram Reel 連結..."
         value={url}
         onChange={(e) => setUrl(e.target.value)}
+        className="flex-1"
         disabled={loading}
-        style={{ width: 320, padding: 6 }}
       />
-      <button type="submit" disabled={loading || !url.trim()} style={{ padding: "6px 12px", marginLeft: 6 }}>
+      <Button type="submit" disabled={loading || !url.trim()}>
         {loading ? "追蹤中..." : "追蹤"}
-      </button>
-      {error && <p style={{ color: "red", fontSize: 12 }}>{error}</p>}
+      </Button>
+      {error && (
+        <p className="absolute mt-12 text-sm text-red-500">{error}</p>
+      )}
     </form>
   );
 }
