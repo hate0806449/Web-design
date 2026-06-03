@@ -17,3 +17,6 @@ BASE_URL = os.getenv("NEXT_PUBLIC_BASE_URL", "http://localhost:3000")
 # 非官方 scraping 用 — 從瀏覽器 cookie 拿
 IG_SESSION_ID = os.getenv("IG_SESSION_ID", "")
 IG_CSRF_TOKEN = os.getenv("IG_CSRF_TOKEN", "")
+
+# 排程用的 Bearer Token，避免被外面亂打
+CRON_SECRET = os.getenv("CRON_SECRET", "")
