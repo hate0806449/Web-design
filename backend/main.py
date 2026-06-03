@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import init_db
-from routers import auth, videos
+from routers import auth, videos , reels
 
 
 @asynccontextmanager
@@ -17,7 +17,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="IG Reel Tracker API", lifespan=lifespan)
 
-# dev 階段先全開，上線前要收緊
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,6 +28,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(videos.router)
+app.include_router(reels.router)
 
 
 @app.get("/health")

@@ -35,6 +35,19 @@ class VideoOut(BaseModel):
 class VideoWithSnapshots(VideoOut):
     snapshots: list[SnapshotOut] = []
 
+class ReelOut(BaseModel):
+    id: str
+    shortcode: str
+    caption: str
+    timestamp: str
+    permalink: str
+    thumbnailUrl: str | None = None
+    plays: int | None = None
+    igViews: int | None = None
+    fbViews: int | None = None
+    likes: int | None = None
+    comments: int | None = None
+    shares: int | None = None
 
 class IgUser(BaseModel):
     id: str
