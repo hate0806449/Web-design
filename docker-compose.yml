@@ -12,5 +12,39 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
 
+  backend:
+    build: ./backend
+    container_name: Backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ig_tracker
+      INSTAGRAM_APP_ID: ${INSTAGRAM_APP_ID}
+      INSTAGRAM_APP_SECRET: ${INSTAGRAM_APP_SECRET}
+      IG_SESSION_ID: ${IG_SESSION_ID}
+      IG_CSRF_TOKEN: ${IG_CSRF_TOKEN}
+    volumes:
+      - ./backend:/app
+      - /app/.venv  
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    env_file:
+      - ./.env
+
+  frontend:
+    build: ./frontend
+    container_name: Frontend
+    restart: unless-stopped
+    environment:
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
 volumes:
   pg_data:
