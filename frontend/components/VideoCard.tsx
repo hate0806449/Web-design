@@ -4,8 +4,12 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { VideoWithLatestSnapshot } from "@/types";
-
+import { MetricsChart } from "./MetricsChart";
+import {
+  VideoWithLatestSnapshot,
+  VideoWithSnapshots,
+  SnapshotData,
+} from "@/types";
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -31,9 +35,21 @@ interface Props {
 export function VideoCard({ video, onDeleted, onRefreshed }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
+  const [expanded, setExpanded] = useState(false);
+  const [snapshots, setSnapshots] = useState<SnapshotData[]>([]);
+  const [loadingChart, setLoadingChart] = useState(false);
   const snap = video.latestSnapshot;
 
+  async function handleExpand() {
+    if (!expanded) {
+      setLoadingChart(true);
+      const res = await fetch(`/api/videos/${video.id}`);
+      const data: VideoWithSnapshots = await res.json();
+      setSnapshots(data.snapshots);
+      setLoadingChart(false);
+    }
+    setExpanded((v) => !v);
+  }
   async function handleRefresh() {
     setRefreshing(true);
     try {
@@ -42,6 +58,11 @@ export function VideoCard({ video, onDeleted, onRefreshed }: Props) {
       const all: VideoWithLatestSnapshot[] = await res.json();
       const updated = all.find((v) => v.id === video.id);
       if (updated) onRefreshed(updated);
+      if (expanded) {
+        const r2 = await fetch(`/api/videos/${video.id}`);
+        const d2: VideoWithSnapshots = await r2.json();
+        setSnapshots(d2.snapshots);
+      }
     } finally {
       setRefreshing(false);
     }
@@ -128,6 +149,25 @@ export function VideoCard({ video, onDeleted, onRefreshed }: Props) {
             </div>
           </div>
         </div>
+
+        <button
+          onClick={handleExpand}
+          className="mt-3 w-full text-sm text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-1"
+        >
+          {expanded ? "收起趨勢圖 ▲" : "展開趨勢圖 ▼"}
+        </button>
+
+        {expanded && (
+          <div className="mt-3">
+            {loadingChart ? (
+              <p className="text-sm text-center text-muted-foreground py-4">
+                載入中...
+              </p>
+            ) : (
+              <MetricsChart snapshots={snapshots} />
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
