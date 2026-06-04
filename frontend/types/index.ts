@@ -29,3 +29,18 @@ export interface IgUser {
   id: string;
   username: string;
 }
+
+export interface ReelData {
+  id: string;
+  shortcode: string;
+  caption: string;
+  timestamp: string;
+  permalink: string;
+  thumbnailUrl: string | null;
+  plays: number | null;
+  igViews: number | null;
+  fbViews: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+}

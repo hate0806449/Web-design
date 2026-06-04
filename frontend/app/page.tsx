@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AddVideoForm } from "@/components/AddVideoForm";
 import { VideoCard } from "@/components/VideoCard";
 import { StatsGrid } from "@/components/StatsGrid";
+import { ReelsList } from "@/components/ReelsList";
 import { VideoWithLatestSnapshot, IgUser } from "@/types";
 
 export default function Home() {
@@ -75,29 +76,37 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="relative">
-          <AddVideoForm onAdded={handleAdded} />
-        </div>
+        {user && <ReelsList />}
 
-        {videos.length > 0 && <StatsGrid videos={videos} />}
+        {!user && (
+          <>
+            <div className="relative">
+              <AddVideoForm onAdded={handleAdded} />
+            </div>
 
-        {loading ? (
-          <p className="text-center text-muted-foreground py-12">載入中...</p>
-        ) : videos.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">
-            還沒有任何影片，貼上 IG Reel 連結開始追蹤
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {videos.map((v) => (
-              <VideoCard
-                key={v.id}
-                video={v}
-                onDeleted={handleDeleted}
-                onRefreshed={handleRefreshed}
-              />
-            ))}
-          </div>
+            {videos.length > 0 && <StatsGrid videos={videos} />}
+
+            {loading ? (
+              <p className="text-center text-muted-foreground py-12">
+                載入中...
+              </p>
+            ) : videos.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">
+                登入 Instagram 即可自動看到所有 Reels 數據
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {videos.map((v) => (
+                  <VideoCard
+                    key={v.id}
+                    video={v}
+                    onDeleted={handleDeleted}
+                    onRefreshed={handleRefreshed}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
