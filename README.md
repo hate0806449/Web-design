@@ -2,35 +2,94 @@
 
 期末專題：追蹤 Instagram Reels 數據（讚數、留言、播放）的 web app。
 
-## 技術棧
+## 功能特色
 
-- **前端**：Next.js 16 + React 19（port 3000）
-- **後端**：FastAPI (Python)（port 8000）
-- **DB**：PostgreSQL 16（Docker Compose）
-- **ORM**：SQLAlchemy 2.0
-- **抓取**：Instagram Graph API（官方）+ session cookie scraping（合計 IG+FB 流量）
+- **Instagram OAuth 登入**：支援使用 IG Business 帳號登入並取得長期 token
+- **自動 Reels 清單**：登入後一鍵看到帳號下所有 Reels + 流量
+- **跨平台合計播放**：IG 後台只看得到 IG 播放數據，本專案會合計 IG + FB 數據
+- **手動追蹤**：貼任意 IG Reels 連結就能加入追蹤清單
+- **歷史快照與趨勢圖**：每次刷新會建立一筆快照並且可以透過折線圖看到趨勢
+- **CSV 匯出**：一鍵下載所有追蹤影片的數據
+- **自動排程**：Vercel Cron 每 6 小時批次刷新
 
-## 啟動方式
 
-### 1. 起資料庫
+## 技術架構
+
+### 前端
+- Next.js 16 (App Router) + React 19
+- Tailwind CSS 4 + shadcn/ui (base-nova)
+- Recharts 折線圖
+- Lucide React icons
+- TypeScript 5
+
+### 後端
+- FastAPI (Python 3.12+)
+- SQLAlchemy 2.0 ORM
+- PostgreSQL 16 (Docker Compose)
+- httpx + ThreadPoolExecutor 平行抓取數據
+
+
+## 資料庫設計
+
+```
+┌──────────────────┐         ┌──────────────────┐
+│      Video       │  1:N    │     Snapshot     │
+├──────────────────┤  ────►  ├──────────────────┤
+│ id (PK)          │ CASCADE │ id (PK)          │
+│ platform "IG"    │         │ videoId (FK)     │
+│ shortcode (UQ)   │         │ views (合計)      │
+│ mediaId          │         │ igViews / fbViews│
+│ username         │         │ likes / comments │
+│ caption          │         │ shares           │
+│ uploadedAt       │         │ scrapedAt        │
+│ createdAt        │         └──────────────────┘
+└──────────────────┘
+```
+
+
+## API 端點
+
+| Method | Path | 說明 |
+|--------|------|------|
+| `GET` | `/api/auth/instagram` | 導向 IG 授權頁面 |
+| `GET` | `/api/auth/callback` | OAuth callback，交換長期 oken |
+| `GET` | `/api/auth/me` | 取得目前登入用戶 |
+| `POST` | `/api/auth/logout` | 登出 |
+| `GET` | `/api/videos` | 獲取所有追蹤影片（含最新快照） |
+| `POST` | `/api/videos` | 新增追蹤影片（傳入 `{url}`） |
+| `GET` | `/api/videos/{id}` | 獲取單一追蹤影片|
+| `DELETE` | `/api/videos/{id}` | 取消追蹤影片 |
+| `POST` | `/api/videos/{id}/refresh` | 刷新並建立快照 |
+| `GET` | `/api/videos/export.csv` | CSV 匯出 |
+| `GET` | `/api/reels` | 取得登入用戶的所有 Reels 資訊 |
+| `GET` | `/api/cron` | 排程觸發刷新 |
+
+---
+
+## 本地啟動方式
+
+### 1. 環境變數
+
+```bash
+cp .env.example .env
+# 編輯 .env 填入：
+#   INSTAGRAM_APP_ID / SECRET 
+#   IG_SESSION_ID / IG_CSRF_TOKEN
+#   CRON_SECRET 
+```
+
+- IG_APP_ID / SECRET ：到 [Meta for Developers](https://developers.facebook.com/) 申請
+- IG_SESSION_ID / IG_CSRF_TOKEN：瀏覽器登入 IG 後開啟 DevTools → Application → Cookies → `instagram.com` 複製 `sessionid` 跟 `csrftoken` 的值
+
+
+
+### 2. 啟動後端程式與資料庫
 
 ```bash
 docker compose up -d
 ```
 
-### 2. 後端
-
-```bash
-cd backend
-python -m venv .venv
-.venv/Scripts/activate   # Windows
-# source .venv/bin/activate  # macOS/Linux
-
-pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
-```
-
-第一次啟動會自動 `create_all` 把 `Video` / `Snapshot` 表建出來。
+第一次啟動會自動把 `Video` / `Snapshot` 表建出來。
 
 ### 3. 前端
 
@@ -42,35 +101,51 @@ npm run dev
 
 開瀏覽器 → http://localhost:3000
 
-### 4. 環境變數
+## 專案結構
 
-```bash
-cp .env.example .env
-# 填入 INSTAGRAM_APP_ID / SECRET / IG_SESSION_ID / IG_CSRF_TOKEN
 ```
-
-- IG App：到 [Meta for Developers](https://developers.facebook.com/) 申請
-- IG_SESSION_ID / IG_CSRF_TOKEN：瀏覽器登入 IG 後在 DevTools → Application → Cookies 複製
-
-## 目前進度
-
-- [x] 專案骨架、docker-compose
-- [x] FastAPI + 雙軌 IG 抓取（session cookie / OAuth token）
-- [x] PostgreSQL + Video / Snapshot ORM
-- [x] OAuth 登入 + cookie session（instagram_business_basic scope）
-- [x] /api/videos GET / POST 接真實 DB
-- [x] 前端 StatsGrid 總覽
-- [ ] /api/videos DELETE + refresh 端點（穎禾）
-- [ ] 影片卡 UI 美化（穎禾）
-- [ ] 自動 Reels 清單（紘陞）
-- [ ] 排程自動刷新（紘陞）
-- [ ] 趨勢折線圖（紘陞）
+Web-design/
+├── backend/                       # 後端專案
+│   ├── main.py                    # FastAPI app
+│   ├── config.py                  # 環境變數管理
+│   ├── database.py                # SQLAlchemy engine
+│   ├── models.py                  # Video / Snapshot ORM
+│   ├── schemas.py                 # Pydantic 回傳格式
+│   ├── Dockerfile                 # 後端 Dockerfile
+│   ├── routers/
+│   │   ├── auth.py                # OAuth 登入流程
+│   │   ├── videos.py              # 影片CRUD處理 / 刷新 / CSV匯出
+│   │   ├── reels.py               # 自動顯示清單
+│   │   └── cron.py                # 排程刷新
+│   └── services/
+│       └── instagram.py           # IG 資料抓取
+│
+├── frontend/                      # 前端專案
+│   ├── app/
+│   │   ├── layout.tsx
+│   │   ├── page.tsx               # 主頁
+│   │   └── globals.css            # Tailwind 4
+│   ├── components/
+│   │   ├── AddVideoForm.tsx       # 新增影片網址表單
+│   │   ├── VideoCard.tsx          # 影片資料卡
+│   │   ├── StatsGrid.tsx          # 統計資料
+│   │   ├── MetricsChart.tsx       # 趨勢折線圖
+│   │   ├── ReelsList.tsx          # Reels 清單
+│   │   └── ui/                    
+│   ├── lib/utils.ts               
+│   ├── types/index.ts             
+│   ├── next.config.ts             # rewrites /api/* → 8000
+│   └── vercel.json                # cron schedule
+│
+├── docker-compose.yml             
+└── .env.example
+```
 
 ## 分工
 
-| 階段 | 負責人 | 狀態 |
+| 階段 | 負責人 | 說明 |
 |------|--------|------|
-| 1 | 曹哲維 (PM) | ✅ 骨架 + OAuth 雛形 + 假資料 API |
-| 2 | 陳晶晶 | ✅ IG 抓取、DB ORM、auth 補完、StatsGrid |
-| 3 | 施穎禾 | 進行中 — CRUD 完整 + UI 美化 |
-| 4 | 王紘陞 | 排程 — Reels 自動清單 + cron + 折線圖 |
+| 1 | 曹哲維 (PM) | 專案骨架、OAuth 雛形、假資料 API|
+| 2 | 陳晶晶 | SQLAlchemy ORM、IG 資料抓取、OAuth細節、StatsGrid |
+| 3 | 施穎禾 | Videos CRUD/refresh/CSV、Tailwind+shadcn整套、VideoCard、RWD |
+| 4 | 王翃陞 | Reels 自動清單、cron 排程、MetricsChart 折線圖、整合 README |
