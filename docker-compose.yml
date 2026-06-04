@@ -23,6 +23,7 @@ services:
       IG_SESSION_ID: ${IG_SESSION_ID}
       IG_CSRF_TOKEN: ${IG_CSRF_TOKEN}
       CRON_SECRET: ${CRON_SECRET}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
     volumes:
       - ./backend:/app
       - /app/.venv  
@@ -33,19 +34,6 @@ services:
     env_file:
       - ./.env
 
-  frontend:
-    build: ./frontend
-    container_name: Frontend
-    restart: unless-stopped
-    environment:
-      - WATCHPACK_POLLING=true
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
 
 volumes:
   pg_data:
