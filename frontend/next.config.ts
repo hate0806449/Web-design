@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // 前端 /api/* 代理到 FastAPI 後端，這樣前端 fetch 都打同源就好
+  allowedDevOrigins:[""],
   async rewrites() {
     return [
       {

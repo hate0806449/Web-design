@@ -101,6 +101,16 @@ npm run dev
 
 開瀏覽器 → http://localhost:3000
 
+### 4. OAuth 登入
+因為IG OAuth callback 須要一個公開可訪問的 URL，開發時可以使用 [ngrok](https://ngrok.com/) 暴露本地端口：
+```bash
+ngrok http 3000
+```
+於Mata for Developers 的 IG App 設定中，將 OAuth callback URL 設為 `https://<ngrok-url>/api/auth/callback`。
+修改 `.env` 的 `NEXT_PUBLIC_BASE_URL` 為 ngrok 提供的 URL，
+修改 `frontend/next.config.ts` 的 `allowedDevOrigins` 加入 ngrok 提供的 URL，重新啟動前端即可。
+
+
 ## 專案結構
 
 ```
